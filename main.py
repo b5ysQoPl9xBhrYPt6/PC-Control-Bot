@@ -1,5 +1,8 @@
 from sys import exit
+import aiogram.exceptions
 import modules
+import modules.actions as actions
+from aiogram.types import FSInputFile
 import aiogram
 import logging
 import asyncio
@@ -7,9 +10,16 @@ import asyncio
 logging.basicConfig(level=logging.INFO)  # Logging info
 
 async def main():
+    actions.get_screenshot()
+    for id in modules.warning_message_chat_id:
+        try:
+            await modules.bot.send_photo(chat_id=id, photo=FSInputFile(actions.get_screenshot_path()), caption='Компьютер активный. Напишите /start, чтобы начать управление.')
+        except aiogram.exceptions.TelegramBadRequest:
+            print(f'Chat {id} not founded.')
+
     await modules.bot.delete_webhook(drop_pending_updates=True)
     await modules.dp.start_polling(modules.bot)
-    # await modules.bot.session.close()
+    await modules.bot.session.close()
 
 if __name__ == '__main__':
     try:
