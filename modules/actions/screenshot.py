@@ -1,8 +1,9 @@
 import mss
 import mss.tools
 import os
+from ..bot_settings import temp_dir_name
 
-temp_path = os.path.join(os.getenv('TEMP'), f'temp_direction')
+temp_path = os.path.join(os.getenv('TEMP'), temp_dir_name)
 file_name = 'screenshot.jpg'
 
 def get_screenshot():
