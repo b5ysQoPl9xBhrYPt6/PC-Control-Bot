@@ -1,6 +1,8 @@
 from .command import *
 from aiogram import exceptions
-from .bot_settings import processes_object_name
+from .bot_settings import processes_object_name, temp_dir_name
+
+temp_path = os.path.join(os.getenv('TEMP'), temp_dir_name)
 
 @dp.message(Memory.WAITING_FOR_ACTION)
 async def select_action(message: Message, state: FSMContext):
@@ -20,6 +22,8 @@ async def select_action(message: Message, state: FSMContext):
             await message.answer('Передвижение курсора разблокировано.')
     elif message.text == 'Заблокировать или разблокировать открытие процессов':
         await locked_processes_message(message, state)
+    elif message.text == 'Получить файл':
+        await explorer(message, state, 'C:\\')
     else:
         await message.answer('Неизвестная команда. Повторите попытку.')
 
@@ -58,6 +62,28 @@ async def lock_processes(message: Message, state: FSMContext):
             await message.answer('Список пустой.')
     else:
         await message.answer('Неизвестная команда. Повторите попытку.')
+
+@dp.message(Memory.WAITING_FOR_COPY_FILE)
+async def copy_file(message: Message, state: FSMContext):
+    if message.text == 'Выйти':
+        await main_message(message, state)
+    elif 'Перейти в ' in message.text:
+        info = message.text.split('Перейти в ')[-1]
+        folder = info.split(' <')[0]
+        path = info.split(' <')[-1].split('>')[0]
+        print(path, folder)
+        await explorer(message, state, path)
+    elif 'Назад' in message.text:
+        info = message.text.split('Назад <')[-1].split('>')[0]
+        await explorer(message, state, info)
+    elif 'Скачать ' in message.text:
+        info = message.text.split('Скачать ')[-1]
+        file = info.split(' <')[0]
+        path = info.split(' <')[-1].split('>')[0]
+        print(path, file)
+        await message.answer(text='Загрузка файла...')
+        actions.get_file(path, file)
+        await message.answer_document(FSInputFile(os.path.join(temp_path, file)), caption=f'Скачан файл "{file}" из "{os.path.abspath(os.path.join(path, os.pardir))}"')
 
 @dp.message()
 async def message_handler(message: Message, state: FSMContext):
