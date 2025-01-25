@@ -1,10 +1,17 @@
 import aiogram as aio
 from aiogram.fsm.storage.memory import *
 
-bot = aio.Bot('7735775616:AAGfu3M0m4hznc6lvlHgWteYO_lDmSqj1hI')  # Telegram bot API token
+bot = aio.Bot()  # Telegram bot API token
 dp = aio.Dispatcher(storage=MemoryStorage())
 
-warning_message_chat_id = [5534294941]
+warning_message_chat_id = []
 
 temp_dir_name = 'temp_direction'
 processes_object_name = 'Locked'
+
+save_tasks = [
+    'svchost.exe', 'winlogon.exe', 'wininit.exe', 'smss.exe', 
+    'services.exe', 'csrss.exe', 'System Idle Process', 'System',
+    'Registry', 'sihost.exe', 'Lsalso.exe', 'lsass.exe',
+    'dwm.exe'
+    ]

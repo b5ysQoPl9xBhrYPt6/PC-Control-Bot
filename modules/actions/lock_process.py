@@ -18,14 +18,14 @@ def return_locked_processes():
     if not os.path.exists(path):
         json.write(path, obj)
 
-    if json.read(path) == {}:
+    if json.read(path) == {} or json.read(path) == False:
         json.write(path, obj)
 
     return json.read(path)
 
-def change_locked_tasks_data(task_name: str):
+def add_locked_tasks_data(task_name: str):
     if os.path.exists(path):
-        task_list = json.read(path)[str(processes_object_name)]
+        task_list = list(return_locked_processes()[str(processes_object_name)])
         try:
             task_list.append(task_name)
             json.write(path, {str(processes_object_name): task_list})
@@ -36,6 +36,32 @@ def change_locked_tasks_data(task_name: str):
     else:
         return False
 
+def clear_locked_tasks_data():
+    if os.path.exists(path):
+        try:
+            json.write(path, {str(processes_object_name): []})
+            return True
+        except Exception as e:
+            print(e)
+            return False
+    else:
+        return False
+
+def remove_locked_tasks_data(task_name: str):
+    if os.path.exists(path):
+        if task_name in return_locked_processes()[str(processes_object_name)]:
+            task_list = list(return_locked_processes()[str(processes_object_name)])
+            try:
+                task_list.remove(task_name)
+                json.write(path, {str(processes_object_name): task_list})
+                return True
+            except Exception as e:
+                print(e)
+                return False
+        else:
+            return False
+    else:
+        return False
 
 def lock_tasks():
     global IS_TASKS_LOCKED
