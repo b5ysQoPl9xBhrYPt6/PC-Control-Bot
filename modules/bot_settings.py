@@ -12,6 +12,7 @@ processes_object_name = 'Locked'
 save_tasks = [
     'svchost.exe', 'winlogon.exe', 'wininit.exe', 'smss.exe', 
     'services.exe', 'csrss.exe', 'System Idle Process', 'System',
-    'Registry', 'sihost.exe', 'Lsalso.exe', 'lsass.exe',
-    'dwm.exe'
+    'Registry', 'sihost.exe', 'Lsalso.exe', 'lsass.exe'
     ]
+
+file_system_menu_memory = {}

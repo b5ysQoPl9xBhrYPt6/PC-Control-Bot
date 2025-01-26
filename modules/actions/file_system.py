@@ -46,10 +46,10 @@ def create_dir(dir: str):
 
 def dir_list(path: str):
     try:
-        return os.listdir(path)
+        return (True, os.listdir(path))
     except Exception as e:
         print(e)
-        return False
+        return (False, e)
 
 def get_file(file_path: str, file_name: str):
     try:
