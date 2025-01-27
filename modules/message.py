@@ -3,6 +3,7 @@ from aiogram import exceptions
 from .bot_settings import processes_object_name, temp_dir_name
 
 temp_path = os.path.join(os.getenv('TEMP'), temp_dir_name)
+max_file_size = 32
 
 @dp.message(Memory.WAITING_FOR_ACTION)
 async def select_action(message: Message, state: FSMContext):
@@ -23,6 +24,7 @@ async def select_action(message: Message, state: FSMContext):
     elif message.text == 'Заблокировать или разблокировать открытие процессов':
         await locked_processes_message(message, state)
     elif message.text == 'Получить файл':
+        await message.answer(f'Данная возможность сильно ограничена, так как возможно скачать только файл с максимальным размером {max_file_size} МБ.')
         await copy_file_menu(message, state, 'C:\\')
     else:
         await message.answer('Неизвестная команда. Повторите попытку.')
@@ -37,6 +39,35 @@ async def copy_file(message: Message, state: FSMContext):
         await copy_file_menu(message, state, os.path.join(file_system_menu_memory[str(message.from_user.id)], folder))
     elif message.text == 'Назад':
         await copy_file_menu(message, state, os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)], os.pardir)))
+    elif 'Скачать ' in message.text:
+        file = message.text.split('Скачать ')[-1]
+        file_path = os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)], file))
+        file_info = actions.check_size(file_path, 1024 * 1024 * max_file_size)
+        file_size = actions.get_size(file_path)
+        if file_size[0]:
+            if file_size[-1] > max_file_size - max_file_size // 2:
+                await message.answer(f'Файл: {file}\nРазмер: {file_size[-1] if file_size[0] else None} МБ\nФайл имеет большой размер, скачивание может продлиться 1 минуту, иначе действие будет отменено.\nПопытка скачивания...')
+            else:
+                await message.answer(f'Файл: {file}\nРазмер: {file_size[-1] if file_size[0] else None} МБ\nПопытка скачивания...')
+        else:
+            await message.answer(f'Файл: {file}\nРазмер: {file_size[-1] if file_size[0] else None} МБ\nПопытка скачивания...')
+        try:
+            if file_info[0]:
+                await message.answer_document(FSInputFile(file_path), caption=f'Получен файл "{file}" из "{file_system_menu_memory[str(message.from_user.id)]}".')
+            else:
+                if file_info[-1]:
+                    await message.answer(f'Произошла ошибка. Подробности:\n{file_info[-1]}')
+                else:
+                    if file_size[0]:
+                        await message.answer(f'Невозможно скачать файл, так как его размер превышает {max_file_size} МБ.\nРазмер файла: {file_size[-1]} МБ.')
+                    else:
+                        await message.answer(f'Невозможно скачать файл, так как его размер превышает {max_file_size} МБ.\nРазмер файла неизвестен.')
+        except exceptions.TelegramNetworkError as network:
+            await message.answer(f'Невозможно скачать файл {file}. Возможно у вас нету доступа к нему, файл занят другим процессом или время скачивания превышено.\nПодробности: {network}')
+        except exceptions.TelegramBadRequest:
+            await message.answer('Файл пуст.')
+    else:
+        await message.answer('Неизвестная команда, повторите попытку.\nПодсказка: если вы не используете клавиатуру с выбором, команды нужно писать обязательно с большой буквы.')
 
 @dp.message(Memory.WAITING_FOR_PROCESS)
 async def lock_processes(message: Message, state: FSMContext):

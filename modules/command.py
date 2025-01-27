@@ -49,6 +49,7 @@ async def locked_processes_message(message: Message, state: FSMContext):
     await state.set_state(Memory.WAITING_FOR_PROCESS)
 
 async def copy_file_menu(message: Message, state: FSMContext, path: str):
+    await message.answer('Загрузка директории...')
     button_list = []
     dir_list = []
     file_list = []
@@ -76,8 +77,24 @@ async def copy_file_menu(message: Message, state: FSMContext, path: str):
     for file in file_list:
         button_list.append(file)
 
-    kb = ReplyKeyboardMarkup(keyboard=button_list)
-    await message.answer(f'Текущий путь:\n{path}', reply_markup=kb)
+    try:
+        kb = ReplyKeyboardMarkup(keyboard=button_list)
+        await message.answer(f'Текущий путь:\n{path}', reply_markup=kb)
+    except exceptions.TelegramBadRequest:
+        for file in file_list:
+            button_list.remove(file)
+
+        try:
+            kb = ReplyKeyboardMarkup(keyboard=button_list)
+            await message.answer(f'Не удалось отобразить файлы, так как в текущей директории слишком много содержимого, будут отображаться только папки. Вы все еще можете скачать файлы из этой директории, написав "Скачать file_name.txt", если знаете точное имя файла.', reply_markup=kb)
+            await message.answer(f'Текущий путь:\n{path}')
+        except exceptions.TelegramBadRequest:
+            for dir in dir_list:
+                button_list.remove(dir)
+            
+            kb = ReplyKeyboardMarkup(keyboard=button_list)
+            await message.answer(f'Не удалось отобразить содержимое директории, так как в ней слишком много файлов и папок. Вы все еще можете скачать файлы из этой директории или перейти в другую, если знаете точное имя файла или папки, написав "Скачать file_name.txt" или "Перейти в directory_name".')
+            await message.answer(f'Текущий путь:\n{path}', reply_markup=kb)
     print(file_system_menu_memory)
 
     await state.set_state(Memory.WAITING_FOR_COPY_FILE)

@@ -59,3 +59,19 @@ def get_file(file_path: str, file_name: str):
         print(e)
         return False
     
+def check_size(file_path: str, max_file_size: int = 1 * 1024 * 1024 * 512):
+    try:
+        file_size = os.path.getsize(file_path)
+        if file_size > max_file_size:
+            return (False, None)
+        else:
+            return (True, None)
+    except Exception as e:
+        print(e)
+        return (False, e)
+
+def get_size(file_path: str):
+    try:
+        return (True, float(round(os.path.getsize(file_path) / 1024 / 1024, 3)))
+    except Exception as e:
+        return (False, e)
