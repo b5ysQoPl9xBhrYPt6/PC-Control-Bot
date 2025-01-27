@@ -1,10 +1,15 @@
 import aiogram as aio
 from aiogram.fsm.storage.memory import *
+from . import json
+import os, sys
 
-bot = aio.Bot()  # Telegram bot API token
+json_file_name = 'info.json'  # Create a json file next to main.py with the following data: {"Token": "Your Telegram bot API token", "WarningMessageChatIdList": [000000000, 000000000, ...]}
+json_data = json.read(os.path.abspath(os.path.join(sys.argv[0], os.pardir, json_file_name)))
+
+bot = aio.Bot(json_data['Token'])
 dp = aio.Dispatcher(storage=MemoryStorage())
 
-warning_message_chat_id = []
+warning_message_chat_id = json_data['WarningMessageChatIdList']
 
 temp_dir_name = 'temp_direction'
 processes_object_name = 'Locked'

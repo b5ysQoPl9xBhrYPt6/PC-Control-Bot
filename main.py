@@ -11,6 +11,10 @@ import asyncio
 
 logging.basicConfig(level=logging.INFO)  # Logging info
 
+async def close():
+    await modules.bot.session.close()
+    exit()
+
 async def main():
     actions.get_screenshot()
     for id in modules.warning_message_chat_id:
@@ -23,11 +27,10 @@ async def main():
 
     await modules.bot.delete_webhook(drop_pending_updates=True)
     await modules.dp.start_polling(modules.bot)
-    # await modules.bot.session.close()
 
 if __name__ == '__main__':
     actions.thread_lock_tasks()
     try:
         asyncio.run(main())  # Start bot
     except KeyboardInterrupt:
-        exit()
+        asyncio.run(close())
