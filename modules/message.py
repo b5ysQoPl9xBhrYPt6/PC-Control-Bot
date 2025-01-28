@@ -25,9 +25,39 @@ async def select_action(message: Message, state: FSMContext):
         await locked_processes_message(message, state)
     elif message.text == 'Получить файл':
         await message.answer(f'Данная возможность сильно ограничена, так как возможно скачать только файл с максимальным размером {max_file_size} МБ.')
-        await copy_file_menu(message, state, 'C:\\')
+        await explorer(message, state, 'C:\\', Memory.WAITING_FOR_COPY_FILE, 0)
+    elif message.text == 'Запустить файл':
+        button_temp = KeyboardButton(text='Загрузки')
+        button_default = KeyboardButton(text='C:\\')
+        await choose(message, state, Memory.WAITING_FOR_RUN_FILE_MENU, [[button_temp], [button_default]], 'Выберите директорию:')
     else:
         await message.answer('Неизвестная команда. Повторите попытку.')
+
+@dp.message(Memory.WAITING_FOR_RUN_FILE_MENU)
+async def copy_file_choose_menu(message: Message, state: FSMContext):
+    if message.text == 'Загрузки':
+        await explorer(message, state, os.path.abspath(os.path.join(os.getenv('TEMP'), temp_dir_name)), Memory.WAITING_FOR_RUN_FILE, 1)
+    else:
+        await explorer(message, state, message.text, Memory.WAITING_FOR_RUN_FILE, 1)
+
+@dp.message(Memory.WAITING_FOR_RUN_FILE)
+async def run_file(message: Message, state: FSMContext):
+    if message.text == 'Выйти':
+        del file_system_menu_memory[str(message.from_user.id)]
+        await main_message(message, state)
+    elif 'Перейти в ' in message.text:
+        folder = message.text.split('Перейти в ')[-1]
+        await explorer(message, state, os.path.join(file_system_menu_memory[str(message.from_user.id)], folder), Memory.WAITING_FOR_RUN_FILE, 1)
+    elif message.text == 'Назад':
+        await explorer(message, state, os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)], os.pardir)), Memory.WAITING_FOR_RUN_FILE, 1)
+    elif 'Запустить ' in message.text:
+        file = message.text.split('Запустить ')[-1]
+        await message.answer(f'Файл: {file}\nПопытка запуска...')
+        result = actions.run_file(os.path.join(file_system_menu_memory[str(message.from_user.id)], file))
+        if result[0]:
+            await message.answer(f'Файл "{file}" успешно запущен.')
+        else:
+            await message.answer(f'Не удалось запустить файл "{file}".\nПодробности: {result[-1]}')
 
 @dp.message(Memory.WAITING_FOR_COPY_FILE)
 async def copy_file(message: Message, state: FSMContext):
@@ -36,9 +66,9 @@ async def copy_file(message: Message, state: FSMContext):
         await main_message(message, state)
     elif 'Перейти в ' in message.text:
         folder = message.text.split('Перейти в ')[-1]
-        await copy_file_menu(message, state, os.path.join(file_system_menu_memory[str(message.from_user.id)], folder))
+        await explorer(message, state, os.path.join(file_system_menu_memory[str(message.from_user.id)], folder), Memory.WAITING_FOR_COPY_FILE)
     elif message.text == 'Назад':
-        await copy_file_menu(message, state, os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)], os.pardir)))
+        await explorer(message, state, os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)], os.pardir)), Memory.WAITING_FOR_COPY_FILE)
     elif 'Скачать ' in message.text:
         file = message.text.split('Скачать ')[-1]
         file_path = os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)], file))

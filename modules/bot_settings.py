@@ -11,7 +11,7 @@ dp = aio.Dispatcher(storage=MemoryStorage())
 
 warning_message_chat_id = json_data['WarningMessageChatIdList']
 
-temp_dir_name = 'temp_direction'
+temp_dir_name = 'temp_directory'
 processes_object_name = 'Locked'
 
 save_tasks = [

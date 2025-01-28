@@ -13,6 +13,8 @@ class Memory(StatesGroup):  # Memory for waiting
     WAITING_FOR_ADD_PROCESS_NAME = State()
     WAITING_FOR_REMOVE_PROCESS_NAME = State()
     WAITING_FOR_COPY_FILE = State()
+    WAITING_FOR_RUN_FILE = State()
+    WAITING_FOR_RUN_FILE_MENU = State()
 
 async def main_message(message: Message, state: FSMContext):
     action_send_message = KeyboardButton(text='Отправить сообщение')
@@ -20,11 +22,12 @@ async def main_message(message: Message, state: FSMContext):
     action_lock_cursor = KeyboardButton(text='Заблокировать или разблокировать курсор')
     action_lock_application = KeyboardButton(text='Заблокировать или разблокировать открытие процессов')
     action_get_file = KeyboardButton(text='Получить файл')
+    action_run_file = KeyboardButton(text='Запустить файл')
     kb = ReplyKeyboardMarkup(keyboard=[
         [action_send_message, action_send_screenshot],
         [action_lock_cursor],
         [action_lock_application],
-        [action_get_file]
+        [action_get_file, action_run_file]
         ])
 
     await message.answer('Выберите доступное действие для взаимодействия с ПК.', reply_markup=kb)
@@ -48,12 +51,22 @@ async def locked_processes_message(message: Message, state: FSMContext):
     await message.answer('Выберите доступное действие для блокировки открытия процессов.\nПри запуске бота, блокировка процессов автоматически включается, но вы можете её отключить или изменить список заблокированных процессов.', reply_markup=lock_processes_menu)
     await state.set_state(Memory.WAITING_FOR_PROCESS)
 
-async def copy_file_menu(message: Message, state: FSMContext, path: str):
+async def choose(message: Message, state: FSMContext, set_state: Memory, buttons: list[list[KeyboardButton]], answer: str):
+    kb = ReplyKeyboardMarkup(keyboard=buttons)
+    await message.answer(answer, reply_markup=kb)
+    await state.set_state(set_state)
+
+async def explorer(message: Message, state: FSMContext, path: str, set_state: Memory, mode: int = 0):
     await message.answer('Загрузка директории...')
     button_list = []
     dir_list = []
     file_list = []
     file_system_menu_memory[str(message.from_user.id)] = path
+
+    if mode == 0:
+        text = 'Скачать'
+    else:
+        text = 'Запустить'
 
     dir_info = actions.dir_list(path)
     if dir_info[0]:
@@ -63,7 +76,7 @@ async def copy_file_menu(message: Message, state: FSMContext, path: str):
                 button_dir = KeyboardButton(text=f'Перейти в {item}')
                 dir_list.append([button_dir])
             elif os.path.isfile(item_path):
-                button_file = KeyboardButton(text=f'Скачать {item}')
+                button_file = KeyboardButton(text=f'{text} {item}')
                 file_list.append([button_file])
     else:
         await message.answer(f'Произошла ошибка. Подробности:\n{dir_info[-1]}')
@@ -97,7 +110,7 @@ async def copy_file_menu(message: Message, state: FSMContext, path: str):
             await message.answer(f'Текущий путь:\n{path}', reply_markup=kb)
     print(file_system_menu_memory)
 
-    await state.set_state(Memory.WAITING_FOR_COPY_FILE)
+    await state.set_state(set_state)
 
 @dp.message(Memory.WAITING_FOR_MESSAGE)
 async def send_message(message: Message, state: FSMContext):
