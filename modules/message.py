@@ -1,6 +1,6 @@
 from .command import *
 from aiogram import exceptions
-from .bot_settings import processes_object_name, temp_dir_name
+from .bot_settings import processes_object_name, save_tasks, temp_dir_name
 
 temp_path = os.path.join(os.getenv('TEMP'), temp_dir_name)
 max_file_size = 32
@@ -30,6 +30,11 @@ async def select_action(message: Message, state: FSMContext):
         button_temp = KeyboardButton(text='Загрузки')
         button_default = KeyboardButton(text='C:\\')
         await choose(message, state, Memory.WAITING_FOR_RUN_FILE_MENU, [[button_temp], [button_default]], 'Выберите директорию:')
+    elif message.text == 'Заблокировать или разблокировать клавиатуру':
+        if actions.lock_keyboard():
+            await message.answer('Нажатие клавиш на клавиатуре заблокировано. Нажмите еще раз, чтобы разблокировать.')
+        else:
+            await message.answer('Нажатие клавиш на клавиатуре разблокировано.')
     else:
         await message.answer('Неизвестная команда. Повторите попытку.')
 
@@ -144,6 +149,45 @@ async def lock_processes(message: Message, state: FSMContext):
             await message.answer('Список пустой.')
     else:
         await message.answer('Неизвестная команда. Повторите попытку.')
+
+@dp.message(Memory.WAITING_FOR_MESSAGE)
+async def send_message(message: Message, state: FSMContext):
+    if not message.text == None:
+        actions.thread_message(message.text)
+        await message.answer('Ваше сообщение было отправлено.')
+        await main_message(message, state)
+    else:
+        await message.answer('В сообщении можно отправлять только текст. Повторите попытку:')
+
+@dp.message(Memory.WAITING_FOR_ADD_PROCESS_NAME)
+async def add_task(message: Message, state: FSMContext):
+    if not message.text in save_tasks:
+        if '.exe' in message.text:
+            if actions.add_locked_tasks_data(message.text):
+                await message.answer('Процесс добавлен в список.')
+                await message.answer(f'Новый список заблокированных процессов:\n{actions.return_locked_processes()[str(processes_object_name)]}')
+            else:
+                await message.answer('Не удалось внести изменения в список.')
+        else:
+            await message.answer('Похоже, вы указали название процесса неправильно, попробуйте ещё. Название обязательно должно быть исполняемым файлом с припиской ".exe" в конце. Например Notepad.exe')
+    else:
+        await message.answer(f'Невозможно добавить процесс "{message.text}" в список заблокированных процессов, так-как этот процесс важен для работы системы.')
+    await locked_processes_message(message, state)
+
+@dp.message(Memory.WAITING_FOR_REMOVE_PROCESS_NAME)
+async def remove_task(message: Message, state: FSMContext):
+    if not message.text == 'Отмена':
+        if message.text in actions.return_locked_processes()[str(processes_object_name)]:
+            if actions.remove_locked_tasks_data(str(message.text)):
+                await message.answer(f'Процесс "{message.text}" удален из списка заблокированных.')
+            else:
+                await message.answer(f'Не удалось удалить "{message.text}" из списка.')
+        else:
+            await message.answer(f'Не удалось найти "{message.text}" в списке.')
+    else:
+        await message.answer('Действие отменено.')
+    await message.answer(f'Список заблокированных процессов:\n{actions.return_locked_processes()[str(processes_object_name)]}')
+    await locked_processes_message(message, state)
 
 @dp.message()
 async def message_handler(message: Message, state: FSMContext):

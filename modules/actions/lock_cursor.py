@@ -2,6 +2,7 @@ import pyautogui as pyi
 from threading import Thread
 
 pyi.PAUSE = 0.01
+pyi.FAILSAFE = False
 IS_CURSOR_LOCKED = False
 
 def lock_cursor():
