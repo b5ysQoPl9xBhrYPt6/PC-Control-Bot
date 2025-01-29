@@ -25,7 +25,7 @@ async def select_action(message: Message, state: FSMContext):
         await locked_processes_message(message, state)
     elif message.text == 'Получить файл':
         await message.answer(f'Данная возможность сильно ограничена, так как возможно скачать только файл с максимальным размером {max_file_size} МБ.')
-        await explorer(message, state, 'C:\\', Memory.WAITING_FOR_COPY_FILE, 0)
+        await explorer(message, state, 'C:\\', Memory.WAITING_FOR_COPY_FILE, 0, 0)
     elif message.text == 'Запустить файл':
         button_temp = KeyboardButton(text='Загрузки')
         button_default = KeyboardButton(text='C:\\')
@@ -36,9 +36,9 @@ async def select_action(message: Message, state: FSMContext):
 @dp.message(Memory.WAITING_FOR_RUN_FILE_MENU)
 async def copy_file_choose_menu(message: Message, state: FSMContext):
     if message.text == 'Загрузки':
-        await explorer(message, state, os.path.abspath(os.path.join(os.getenv('TEMP'), temp_dir_name)), Memory.WAITING_FOR_RUN_FILE, 1)
+        await explorer(message, state, os.path.abspath(os.path.join(os.getenv('TEMP'), temp_dir_name)), Memory.WAITING_FOR_RUN_FILE, 0, 1)
     else:
-        await explorer(message, state, message.text, Memory.WAITING_FOR_RUN_FILE, 1)
+        await explorer(message, state, message.text, Memory.WAITING_FOR_RUN_FILE, 0, 1)
 
 @dp.message(Memory.WAITING_FOR_RUN_FILE)
 async def run_file(message: Message, state: FSMContext):
@@ -47,17 +47,23 @@ async def run_file(message: Message, state: FSMContext):
         await main_message(message, state)
     elif 'Перейти в ' in message.text:
         folder = message.text.split('Перейти в ')[-1]
-        await explorer(message, state, os.path.join(file_system_menu_memory[str(message.from_user.id)], folder), Memory.WAITING_FOR_RUN_FILE, 1)
+        await explorer(message, state, os.path.join(file_system_menu_memory[str(message.from_user.id)]["Path"], folder), Memory.WAITING_FOR_RUN_FILE, 0, 1)
     elif message.text == 'Назад':
-        await explorer(message, state, os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)], os.pardir)), Memory.WAITING_FOR_RUN_FILE, 1)
+        await explorer(message, state, os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)]["Path"], os.pardir)), Memory.WAITING_FOR_RUN_FILE, 0, 1)
     elif 'Запустить ' in message.text:
         file = message.text.split('Запустить ')[-1]
         await message.answer(f'Файл: {file}\nПопытка запуска...')
-        result = actions.run_file(os.path.join(file_system_menu_memory[str(message.from_user.id)], file))
+        result = actions.run_file(os.path.join(file_system_menu_memory[str(message.from_user.id)]["Path"], file))
         if result[0]:
             await message.answer(f'Файл "{file}" успешно запущен.')
         else:
             await message.answer(f'Не удалось запустить файл "{file}".\nПодробности: {result[-1]}')
+    elif message.text == 'Предыдущая страница':
+        await explorer(message, state, file_system_menu_memory[str(message.from_user.id)]["Path"], Memory.WAITING_FOR_RUN_FILE, file_system_menu_memory[str(message.from_user.id)]["Page"] - 1, 1)
+    elif message.text == 'Следующая страница':
+        await explorer(message, state, file_system_menu_memory[str(message.from_user.id)]["Path"], Memory.WAITING_FOR_RUN_FILE, file_system_menu_memory[str(message.from_user.id)]["Page"] + 1, 1)
+    else:
+        await message.answer('Неизвестная команда, повторите попытку.\nПодсказка: если вы не используете клавиатуру с выбором, команды нужно писать обязательно с большой буквы.')
 
 @dp.message(Memory.WAITING_FOR_COPY_FILE)
 async def copy_file(message: Message, state: FSMContext):
@@ -66,12 +72,12 @@ async def copy_file(message: Message, state: FSMContext):
         await main_message(message, state)
     elif 'Перейти в ' in message.text:
         folder = message.text.split('Перейти в ')[-1]
-        await explorer(message, state, os.path.join(file_system_menu_memory[str(message.from_user.id)], folder), Memory.WAITING_FOR_COPY_FILE)
+        await explorer(message, state, os.path.join(file_system_menu_memory[str(message.from_user.id)]["Path"], folder), Memory.WAITING_FOR_COPY_FILE, 0, 0)
     elif message.text == 'Назад':
-        await explorer(message, state, os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)], os.pardir)), Memory.WAITING_FOR_COPY_FILE)
+        await explorer(message, state, os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)]["Path"], os.pardir)), Memory.WAITING_FOR_COPY_FILE, 0, 0)
     elif 'Скачать ' in message.text:
         file = message.text.split('Скачать ')[-1]
-        file_path = os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)], file))
+        file_path = os.path.abspath(os.path.join(file_system_menu_memory[str(message.from_user.id)]["Path"], file))
         file_info = actions.check_size(file_path, 1024 * 1024 * max_file_size)
         file_size = actions.get_size(file_path)
         if file_size[0]:
@@ -83,7 +89,7 @@ async def copy_file(message: Message, state: FSMContext):
             await message.answer(f'Файл: {file}\nРазмер: {file_size[-1] if file_size[0] else None} МБ\nПопытка скачивания...')
         try:
             if file_info[0]:
-                await message.answer_document(FSInputFile(file_path), caption=f'Получен файл "{file}" из "{file_system_menu_memory[str(message.from_user.id)]}".')
+                await message.answer_document(FSInputFile(file_path), caption=f'Получен файл "{file}" из "{file_system_menu_memory[str(message.from_user.id)]["Path"]}".')
             else:
                 if file_info[-1]:
                     await message.answer(f'Произошла ошибка. Подробности:\n{file_info[-1]}')
@@ -96,6 +102,10 @@ async def copy_file(message: Message, state: FSMContext):
             await message.answer(f'Невозможно скачать файл {file}. Возможно у вас нету доступа к нему, файл занят другим процессом или время скачивания превышено.\nПодробности: {network}')
         except exceptions.TelegramBadRequest:
             await message.answer('Файл пуст.')
+    elif message.text == 'Предыдущая страница':
+        await explorer(message, state, file_system_menu_memory[str(message.from_user.id)]["Path"], Memory.WAITING_FOR_COPY_FILE, file_system_menu_memory[str(message.from_user.id)]["Page"] - 1, 0)
+    elif message.text == 'Следующая страница':
+        await explorer(message, state, file_system_menu_memory[str(message.from_user.id)]["Path"], Memory.WAITING_FOR_COPY_FILE, file_system_menu_memory[str(message.from_user.id)]["Page"] + 1, 0)
     else:
         await message.answer('Неизвестная команда, повторите попытку.\nПодсказка: если вы не используете клавиатуру с выбором, команды нужно писать обязательно с большой буквы.')
 

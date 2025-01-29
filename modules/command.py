@@ -56,12 +56,13 @@ async def choose(message: Message, state: FSMContext, set_state: Memory, buttons
     await message.answer(answer, reply_markup=kb)
     await state.set_state(set_state)
 
-async def explorer(message: Message, state: FSMContext, path: str, set_state: Memory, mode: int = 0):
+async def explorer(message: Message, state: FSMContext, path: str, set_state: Memory, page_index: int, mode: int = 0):
     await message.answer('Загрузка директории...')
+    item_list = []
     button_list = []
     dir_list = []
     file_list = []
-    file_system_menu_memory[str(message.from_user.id)] = path
+    file_system_menu_memory[str(message.from_user.id)] = {"Path": path, "Page": page_index}
 
     if mode == 0:
         text = 'Скачать'
@@ -83,31 +84,52 @@ async def explorer(message: Message, state: FSMContext, path: str, set_state: Me
 
     button_exit = KeyboardButton(text='Выйти')
     button_back = KeyboardButton(text='Назад')
-    button_list.append([button_back, button_exit])
+    button_previous_page = KeyboardButton(text='Предыдущая страница')
+    button_next_page = KeyboardButton(text='Следующая страница')
 
+    item_count = 20
     for dir in dir_list:
-        button_list.append(dir)
+        item_list.append(dir)
     for file in file_list:
-        button_list.append(file)
+        item_list.append(file)
+    pages = [[x for x in item_list[i:i+item_count]] for i in range(0, len(item_list), item_count)]
+
+    button_list.insert(0, [button_back, button_exit])
+
+    try:
+        for button in pages[page_index]:
+            button_list.append(button)
+        button_list.append([button_previous_page, button_next_page])
+    except IndexError:
+        file_system_menu_memory[str(message.from_user.id)]["Page"] = 0
+        try:
+            for button in pages[0]:
+                button_list.append(button)
+            button_list.append([button_previous_page, button_next_page])
+        except IndexError:
+            await message.answer(f'Не удалось отобразить директорию "{path}"')
+
+    if file_system_menu_memory[str(message.from_user.id)]["Page"] < 0:
+        file_system_menu_memory[str(message.from_user.id)]["Page"] = len(pages) - 1
 
     try:
         kb = ReplyKeyboardMarkup(keyboard=button_list)
-        await message.answer(f'Текущий путь:\n{path}', reply_markup=kb)
+        await message.answer(f'Страница: {file_system_menu_memory[str(message.from_user.id)]["Page"]}\nТекущий путь:\n{path}', reply_markup=kb)
     except exceptions.TelegramBadRequest:
         for file in file_list:
-            button_list.remove(file)
+            item_list.remove(file)
 
         try:
             kb = ReplyKeyboardMarkup(keyboard=button_list)
             await message.answer(f'Не удалось отобразить файлы, так как в текущей директории слишком много содержимого, будут отображаться только папки. Вы все еще можете скачать файлы из этой директории, написав "Скачать file_name.txt", если знаете точное имя файла.', reply_markup=kb)
-            await message.answer(f'Текущий путь:\n{path}')
+            await message.answer(f'Страница: {file_system_menu_memory[str(message.from_user.id)]["Page"]}\nТекущий путь:\n{path}')
         except exceptions.TelegramBadRequest:
             for dir in dir_list:
-                button_list.remove(dir)
+                item_list.remove(dir)
             
             kb = ReplyKeyboardMarkup(keyboard=button_list)
             await message.answer(f'Не удалось отобразить содержимое директории, так как в ней слишком много файлов и папок. Вы все еще можете скачать файлы из этой директории или перейти в другую, если знаете точное имя файла или папки, написав "Скачать file_name.txt" или "Перейти в directory_name".')
-            await message.answer(f'Текущий путь:\n{path}', reply_markup=kb)
+            await message.answer(f'Страница: {file_system_menu_memory[str(message.from_user.id)]["Page"]}\nТекущий путь:\n{path}', reply_markup=kb)
     print(file_system_menu_memory)
 
     await state.set_state(set_state)
